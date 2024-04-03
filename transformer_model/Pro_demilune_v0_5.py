@@ -8,14 +8,39 @@ import logging
 import socket
 import numpy as np
 import pandas as pd 
-
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score, accuracy_score
+import rasterio
 import train_test 
 import customized_train_lr
 import transformer_encoder
 
 import importlib
-
-#*****************************************************************************************************************
+def get_mean_acc_f1 (rst_arr):
+    """rst_arr: filtered arr"""
+    rst_true = rst_arr[:,5].astype(int)
+    rst_run0 = rst_arr[:,8].astype(int)
+    rst_run1 = rst_arr[:,9].astype(int)
+    rst_run2 = rst_arr[:,10].astype(int)
+    
+    oa0 = accuracy_score(rst_true, rst_run0)
+    oa1 = accuracy_score(rst_true, rst_run1)
+    oa2 = accuracy_score(rst_true, rst_run2)
+        
+    cm0_f1 = f1_score(rst_true, rst_run0, average=None)
+    cm1_f1 = f1_score(rst_true, rst_run1, average=None)
+    cm2_f1 = f1_score(rst_true, rst_run2, average=None)
+        
+    oa_all = np.stack((oa0, oa1, oa2), axis=0)
+    acc_mean = np.mean(oa_all, axis=0)
+        
+    cm_f1_all = np.stack((cm0_f1, cm1_f1, cm2_f1), axis=0)
+    cm_f1_all_mean = np.mean(cm_f1_all, axis=0)
+    np.set_printoptions(suppress=True)     # showing decimal notation instead scientific notation
+    return acc_mean, cm_f1_all_mean
+##################################################################################################################
+############################################model training part###################################################
+##################################################################################################################
 ## load csv file
 csv_dir = './demilune_niger_20to23_bd_times.csv'  # year 2020 to 2023
 
@@ -152,7 +177,7 @@ if __name__ == "__main__":
         accuracy,classesi = customized_train_lr.test_accuacy(model,input_images_test_norm3,y_test)
         print (">>>>>>>>>>>>>>>tranfatt" + '  {:0.4f}'.format(accuracy) )
         accuracylist2.append (accuracy)
-        dat_out['predicted_cnn3'] = classesi                
+        dat_out['predicted_cnn' + str(i)] = classesi                
         model_name = MODEL_DIR+base_name+'.tranfatt.model.h5'
     model.save(model_name)
      
@@ -161,6 +186,64 @@ if __name__ == "__main__":
     if accuracylist2!=[]:
         print ("accuracylist2 2d mean" + '  {:4.2f}'.format(np.array(accuracylist2).mean()*100) + "\nstd" + '  {:4.2f}'.format(np.array(accuracylist2).std()*100) )
     #*****************************************************************************************************************
-
+    ##################################################################################################################
+    ############################################model validation part#################################################
+    ##################################################################################################################
+    rst_arr0 = pd.read_csv(file_name).to_numpy()
+    acc_all, f1_all = get_mean_acc_f1(rst_arr0)
+    print(f"overal accuracy: {acc_all}")
+    print(f"F1-score for each class: {f1_all}")
+    print(confusion_matrix(rst_arr0[:,5].astype(int), rst_arr0[:,8].astype(int)))
+    print(confusion_matrix(rst_arr0[:,5].astype(int), rst_arr0[:,9].astype(int)))
+    print(confusion_matrix(rst_arr0[:,5].astype(int), rst_arr0[:,10].astype(int)))
+    ##################################################################################################################
+    ############################################model predict part#################################################
+    ##################################################################################################################
+    rst_dir    = './demilune_niger_aoicellis1.tif'
+    input_dir  = './demilune_niger_2023_bd_times.csv'
+    bn = os.path.basename(mean_name)[2:-23]    
+    x_mean = 0
+    x_std = 1
+    if os.path.exists(mean_name):
+        dat_temp = np.loadtxt(open(mean_name, "rb"), dtype='<U30', delimiter=",", skiprows=1)
+        arr = dat_temp.astype(np.float64)
+        x_mean,x_std = arr[:,0],arr[:,1]
+    else:
+        print("Error !!!! mean file not exists " + mean_name)
+    
+    rst = rasterio.open(rst_dir)
+    rst_prof = rst.profile
+    
+    inputdt = pd.read_csv(input_dir)
+    input_arr = inputdt.to_numpy()    
+    ###########################################################################
+    # shape (N, bands, times)
+    train_fields = list()
+    for bandi in ('b01', 'b02', 'b03', 'b04','b05', 'b06','b07','b08','b11','b12'):
+        for ni in ('00','01','02','03','04','05','06','07','08','09'):    
+            train_fields.append(ni+'.'+bandi)
+    input_dt = inputdt[train_fields].to_numpy()
+    input_ready = (input_dt-x_mean)/x_std
+    input_2d = input_ready.reshape(input_ready.shape[0], 10, 10)
+    ## *********************************************************************
+    ## load model
+    # model = tf.keras.models.load_model(model_path, compile=False)     
+    ## **********************************************************************
+    logits = model.predict(input_2d)
+    rst_list = np.argmax(logits,axis=1).astype(np.uint8)
+    ref_dt = input_arr[:,0:4]  
+    final_rst = np.append(ref_dt, np.expand_dims(rst_list, axis=1), axis=1)
+    heads = ['FID', 'ld', 'gridcode', 'Name', 'result'] 
+    pd.DataFrame(final_rst).to_csv('./final_result.csv',  header=heads, index=False)        
+    ################################################################################
+    ## save raster data
+    rst_arr = np.array(rst_list)
+    rst_2d = rst_arr.reshape(38, 63)
+    naip_metai = rst_prof.copy()
+    naip_metai['driver'] = 'GTiff'       
+    naip_metai['count'] = 1
+    OUT = './demilune_result2023.' + bn + '.tif'          
+    with rasterio.open(OUT, 'w', **naip_metai) as dst:
+        dst.write(rst_2d, 1)    
 
     

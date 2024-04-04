@@ -1,4 +1,3 @@
-# Dec 29, 2020
 # model builder
 # import model_build
 

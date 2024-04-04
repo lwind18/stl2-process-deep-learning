@@ -92,7 +92,7 @@ ax1.tick_params(axis='both', which = 'major', labelsize='large')
 ax1.set_xlabel("years", fontsize='large')
 ax1.set_ylabel("NDVI", fontsize='large')  
 ax1.legend(ncol=1, loc='upper left', fontsize='medium')  
-fig1.savefig('C:/Users/dong.luo/Desktop/GRI_rst/demilune_ndvi.png', dpi=150)
+fig1.savefig('./GRI_rst/demilune_ndvi.png', dpi=150)
 
 fig2, ax2 = plt.subplots(figsize=(20,6))
 ax2.scatter(xx, np.nanmean(ndmi_bands, axis=1), marker='o', s=10, color ='green', label = 'NDMI time series')
@@ -104,6 +104,6 @@ ax2.tick_params(axis='both', which = 'major', labelsize='large')
 ax2.set_xlabel("years", fontsize='large')
 ax2.set_ylabel("NDMI", fontsize='large') 
 ax2.legend(ncol=1, loc='upper left', fontsize='medium')
-fig2.savefig('C:/Users/dong.luo/Desktop/GRI_rst/demilune_ndmi.png', dpi=150)
+fig2.savefig('./GRI_rst/demilune_ndmi.png', dpi=150)
 
 

@@ -30,12 +30,11 @@ out_img = 'G:/GRI_interview/cut_boa10m_comp/'
 def clear_stl2 (scl):
     nodata     = scl!=0
     cld_shadow = scl!=3
-    water      = scl!=6
     cld_medium = scl!=8
     cld_high   = scl!=9
     cirrus     = scl!=10
     snow       = scl!=11
-    all_clear = cld_shadow & cld_medium & cld_high & cirrus & snow & nodata & water
+    all_clear = cld_shadow & cld_medium & cld_high & cirrus & snow & nodata
     return all_clear
 
 ## generate files in each designed date list

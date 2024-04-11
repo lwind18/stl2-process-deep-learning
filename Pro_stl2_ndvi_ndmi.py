@@ -65,7 +65,7 @@ for i in range(total_n):
     scl_clrii = scl_cleari[nofill_msk]
     ## check total usable pixels
     print(f"usable total number of pixels: {np.count_nonzero(scl_clrii==1)} vs 228")
-    ## band order: b1, b10, b2, b3, b4, b5, b6, b7, b8, b9
+    ## paramter of read (*). * starts from 1 not 0.
     b08_arri = np.squeeze(rasterio.open(b10i).read(8))
     b04_arri = np.squeeze(rasterio.open(b10i).read(4))
     b11_arri = np.squeeze(rasterio.open(b10i).read(9))
